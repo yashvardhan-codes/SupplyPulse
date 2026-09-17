@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SupplyPulse — Shortage Intelligence Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07111f;--panel:#0d1a2b;--panel2:#101f33;--line:#1d3047;--line-soft:#152640;
+  --text:#e8f0f8;--muted:#8da2b8;--muted2:#6b8098;
+  --cyan:#31d6c2;--blue:#4ea1ff;--amber:#ffbf58;--orange:#ff8a4c;--red:#ff5d70;--green:#48d597;
+  --shadow:0 18px 50px rgba(0,0,0,.28);
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sans:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body{margin:0;background:radial-gradient(circle at 78% -8%,#153454 0,#07111f 42%,#050c16 100%);color:var(--text);font:14px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+::selection{background:#31d6c233}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:4px}
+
+.app{display:flex;min-height:100vh}
+
+/* ---- Sidebar ---- */
+.side{width:250px;background:rgba(6,15,27,.92);border-right:1px solid var(--line);padding:22px 14px;position:fixed;inset:0 auto 0 0;z-index:20;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:11px;padding:4px 10px 24px}
+.logo{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--cyan),#3b8cff);display:grid;place-items:center;font-weight:800;font-size:13px;color:#04121d;box-shadow:0 8px 22px #31d6c235;font-family:var(--mono)}
+.brand b{font-size:16px;letter-spacing:.1px;font-weight:700}
+.brand span{display:block;color:var(--muted);font-size:10px;letter-spacing:.8px;text-transform:uppercase;margin-top:1px}
+.nav{display:grid;gap:4px}
+.nav button{border:0;background:transparent;color:#9fb0c4;text-align:left;padding:10px 12px;border-radius:9px;display:flex;gap:11px;align-items:center;transition:background .15s,color .15s;font-size:13px}
+.nav button svg{opacity:.75;flex:none}
+.nav button:hover{background:#13253a;color:#fff}
+.nav button.active{background:#152a42;color:#fff;box-shadow:inset 2px 0 0 var(--cyan)}
+.nav button.active svg{opacity:1}
+.sideBottom{margin-top:auto;color:var(--muted2);font-size:11px;padding:0 6px}
+.pulse{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px;box-shadow:0 0 0 0 rgba(72,213,151,.6);animation:pulse 2.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(72,213,151,.45)}70%{box-shadow:0 0 0 6px rgba(72,213,151,0)}100%{box-shadow:0 0 0 0 rgba(72,213,151,0)}}
+.sideDivider{height:1px;background:var(--line);margin:14px 6px}
+
+/* ---- Main ---- */
+.main{margin-left:250px;width:calc(100% - 250px);padding:26px 30px 60px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;gap:16px;flex-wrap:wrap}
+.eyebrow{font-size:11px;color:var(--cyan);letter-spacing:.6px;font-weight:600}
+.title{font-size:26px;font-weight:800;margin:3px 0 4px;letter-spacing:-.2px}
+.sub{color:var(--muted);font-size:12px}
+.sub b{color:#c7d6e4;font-weight:600}
+.actions{display:flex;gap:9px;align-items:center}
+.btn{border:1px solid var(--line);background:#0e1d30;color:#dbe7f2;border-radius:9px;padding:10px 14px;font-size:12.5px;font-weight:600;transition:border-color .15s,background .15s,transform .1s}
+.btn:hover{border-color:#3a5a7a;background:#14273e}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:linear-gradient(135deg,#22c9ba,#348cf4);border:0;color:#04141d;font-weight:700;box-shadow:0 8px 20px #2ea9d92e}
+.btn.primary:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.btn.ghost{background:transparent}
+.btn.small{padding:6px 10px;font-size:11px;border-radius:7px}
+.btn.approve{background:#123b32;color:#82e8bd;border-color:#245e4f}
+.btn.reject{background:#381c25;color:#ff9eaa;border-color:#66313e}
+.chip{font-size:10.5px;font-weight:600;padding:5px 10px;border-radius:20px;border:1px solid var(--line);color:var(--muted);display:inline-flex;gap:6px;align-items:center;font-family:var(--mono)}
+.chip b{color:#dce8f4;font-weight:700}
+.chip.warn{border-color:#5a4a2c;color:#ffd9a0;background:#241a0c}
+.chip.hot{border-color:#5c2e38;color:#ffb0ba;background:#241014}
+
+.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:14px}
+.card{background:linear-gradient(180deg,rgba(16,31,51,.9),rgba(10,23,38,.92));border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.kpi{padding:17px 18px;position:relative}
+.kpi .label{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;font-weight:600}
+.kpi .num{font-size:29px;font-weight:800;margin:6px 0 2px;font-family:var(--mono);transition:color .3s}
+.kpi .num.bump{animation:bump .5s}
+@keyframes bump{0%{transform:scale(1)}30%{transform:scale(1.08)}100%{transform:scale(1)}}
+.delta{font-size:10.5px;color:var(--muted2)}
+.delta.up{color:var(--red)}
+.delta.down{color:var(--green)}
+
+.dashboard{grid-template-columns:1.5fr 1fr;align-items:stretch}
+.cardHead{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.cardHead h3{font-size:13.5px;margin:0;font-weight:700}
+.tag{font-size:10px;color:var(--muted);border:1px solid var(--line);padding:4px 8px;border-radius:20px;white-space:nowrap;font-family:var(--mono)}
+.tabbar{display:flex;gap:6px}
+.tabbar button{background:#0a1727;border:1px solid var(--line);color:#9fb0c3;border-radius:7px;padding:6px 10px;font-size:11px;font-weight:600}
+.tabbar button.active{background:#173248;color:#fff;border-color:#2b536e}
+
+.map{height:340px;position:relative;background:radial-gradient(circle at 50% 40%,#132d47,#0a1728 70%);overflow:hidden}
+.map:before{content:'';position:absolute;inset:0;background-image:linear-gradient(#1b355033 1px,transparent 1px),linear-gradient(90deg,#1b355033 1px,transparent 1px);background-size:42px 42px;transform:perspective(460px) rotateX(56deg) scale(1.42);transform-origin:bottom}
+.road{position:absolute;height:2px;background:#35516b55;transform-origin:left center}
+.flowline{position:absolute;height:2px;border-top:2px dashed var(--cyan);opacity:.85;transform-origin:left center;animation:flow 1.1s linear infinite}
+@keyframes flow{to{background-position:14px 0}}
+.node{position:absolute;transform:translate(-50%,-50%);z-index:2}
+.node button{background:none;border:0;padding:0;display:block}
+.node .ring{position:absolute;left:50%;top:50%;width:26px;height:26px;transform:translate(-50%,-50%);border-radius:50%;border:1.5px solid var(--c);opacity:0;animation:ring 2.4s ease-out infinite}
+.node.critical .ring{opacity:.7}
+@keyframes ring{0%{transform:translate(-50%,-50%) scale(.5);opacity:.65}100%{transform:translate(-50%,-50%) scale(1.9);opacity:0}}
+.node .bubble{width:16px;height:16px;border-radius:50%;border:3px solid #0b1726;box-shadow:0 0 0 3px var(--c),0 0 16px var(--c);background:var(--c);position:relative;z-index:2}
+.node .name{position:absolute;left:13px;top:-9px;white-space:nowrap;color:#c3d2e1;font-size:10px;background:#081522d9;padding:2px 6px;border-radius:5px;font-family:var(--mono);pointer-events:none}
+.node.selected .bubble{width:20px;height:20px}
+.legend{position:absolute;bottom:11px;left:13px;background:#081522e0;border:1px solid var(--line);padding:8px 10px;border-radius:9px;display:flex;gap:12px;font-size:10px;color:var(--muted)}
+.leg{display:flex;align-items:center;gap:5px}
+.dot{width:7px;height:7px;border-radius:50%}
+
+.sidePanel{padding:0}
+.facility{padding:16px 17px}
+.facilityTitle{display:flex;justify-content:space-between;gap:10px}
+.facilityTitle b{font-size:16px}
+.riskPill{padding:4px 9px;border-radius:20px;font-size:10px;font-weight:800;white-space:nowrap;letter-spacing:.3px}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:13px 0}
+.metric{background:#091727;border:1px solid #1b2c41;padding:9px 10px;border-radius:9px}
+.metric small{color:var(--muted);font-size:10px}
+.metric b{display:block;margin-top:3px;font-family:var(--mono);font-size:13px}
+.bar{height:6px;background:#16283d;border-radius:9px;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,var(--cyan),var(--blue));transition:width .4s ease}
+.bodyPad{padding:16px 17px}
+.two{grid-template-columns:1fr 1fr}
+.three{grid-template-columns:1.15fr 1fr .9fr}
+.sectionTitle{font-size:11px;color:#b7c6d6;font-weight:700;margin-bottom:10px;letter-spacing:.2px}
+
+.riskList{display:grid;gap:7px;max-height:340px;overflow:auto}
+.riskRow{display:grid;grid-template-columns:56px 1fr auto;gap:9px;align-items:center;padding:10px;border:1px solid #182b40;background:#091727;border-radius:9px;transition:border-color .15s,background .15s}
+.riskRow:hover{border-color:#2b4a68;background:#0c1c2e;cursor:pointer}
+.riskRow .id{font-weight:800;font-family:var(--mono);font-size:12px}
+.riskRow small{display:block;color:var(--muted);margin-top:2px}
+.status{font-size:9.5px;font-weight:800;padding:4px 8px;border-radius:12px;letter-spacing:.3px;white-space:nowrap}
+.critical{--c:var(--red)}.at{--c:var(--orange)}.watch{--c:var(--amber)}.stable{--c:var(--green)}
+.status.critical{color:#ffb0ba;background:#ff5d7018}
+.status.at{color:#ffc19d;background:#ff8a4c18}
+.status.watch{color:#ffd98f;background:#ffbf5818}
+.status.stable{color:#9bf0c7;background:#48d59718}
+
+.simControls{padding:17px}
+.scenarioBadge{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:#091727;margin-bottom:16px;font-size:11px}
+.control{margin-bottom:16px}
+.controlTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.controlTop span:first-child{color:#b9c8d7;font-size:12.5px;font-weight:500}
+.controlTop small{color:var(--muted2);font-size:10px;display:block;margin-top:1px}
+.value{font-weight:700;color:var(--cyan);font-size:12.5px;font-family:var(--mono)}
+.range{width:100%;accent-color:var(--cyan);cursor:pointer;height:5px}
+.simFooter{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:14px;margin-top:2px}
+.scenario{color:var(--muted);font-size:10.5px}
+
+.resultGrid{grid-template-columns:repeat(3,1fr);margin-top:0}
+.result{padding:14px 15px}
+.result b{font-size:23px;font-family:var(--mono)}
+.result small{display:block;color:var(--muted);font-size:10px;margin-bottom:4px}
+.result .change{font-size:10px;margin-top:4px;font-family:var(--mono)}
+
+.graphWrap{height:340px;position:relative}
+.graph{width:100%;height:100%}
+.edge{stroke:#39536d;stroke-width:1.6;opacity:.65;transition:stroke .2s,opacity .2s}
+.edge.hot{stroke:#ff6677;stroke-width:2.4;opacity:1}
+.gNode{cursor:pointer}
+.gNode circle{stroke:#06111d;stroke-width:3;transition:r .15s}
+.gNode:hover circle{filter:brightness(1.2)}
+.gNode text{fill:#b9c7d5;font-size:10.5px;font-family:var(--mono)}
+.gNode.selected circle{stroke:var(--cyan);stroke-width:4}
+.gNode.dim{opacity:.16}
+
+.intervention{padding:16px 17px}
+.recommend{border:1px solid #285c62;background:linear-gradient(135deg,#0d2b35,#0b1d2c);border-radius:12px;padding:15px;margin-bottom:13px}
+.recTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.recTitle{font-weight:700;font-size:13px}
+.route{font-size:21px;font-weight:800;margin:9px 0;font-family:var(--mono)}
+.route span{color:var(--cyan)}
+.recMeta{display:flex;gap:16px;color:#a8bacb;font-size:10.5px;flex-wrap:wrap}
+.recMeta b{font-family:var(--mono);color:#dce8f4}
+.recButtons{display:flex;gap:7px;margin-top:13px;flex-wrap:wrap}
+.qtyEdit{display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px;border:1px dashed #2b536e;border-radius:9px;background:#08151f}
+.qtyEdit input{width:90px;background:#0a1c2c;border:1px solid #24455f;border-radius:7px;padding:6px 8px;color:#fff;font-family:var(--mono)}
+.empty{padding:20px;text-align:center;color:var(--muted);font-size:12px}
+.trail{display:grid;gap:8px}
+.trailRow{display:flex;gap:10px;align-items:flex-start;font-size:11.5px}
+.trailIcon{width:20px;height:20px;border-radius:50%;background:#173047;display:grid;place-items:center;color:var(--cyan);font-size:9px;flex:none;font-family:var(--mono);font-weight:700}
+.trailRow span{color:var(--muted)}
+.counter{padding:16px 17px}
+.counterGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cf{border:1px solid var(--line);border-radius:10px;padding:12px;background:#091727}
+.cf.after{border-color:#24665a;background:#0b2528}
+.cf .head{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600}
+.cf strong{display:block;font-size:22px;margin:5px 0;font-family:var(--mono)}
+.cf p{font-size:10.5px;color:#9eafc0;margin:0}
+.deltaGood{color:var(--green)}
+.deltaBad{color:var(--red)}
+
+.dependency{padding:16px 17px}
+.depSummary{font-size:11px;color:var(--muted);margin-bottom:10px}
+.log{display:grid;gap:6px;margin-top:8px}
+.logRow{display:flex;justify-content:space-between;font-size:11px;padding:8px 10px;background:#091727;border:1px solid #182b40;border-radius:8px;color:#b6c6d6}
+.logRow b{font-family:var(--mono);color:#dce8f4}
+
+.toast{position:fixed;right:22px;bottom:22px;background:#12283b;border:1px solid #2d536c;color:#dcebf5;padding:12px 15px;border-radius:10px;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);transition:.25s;z-index:50;font-size:12.5px;max-width:320px}
+.toast.show{opacity:1;transform:none}
+.page{display:none}
+.page.active{display:block;animation:fadein .25s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.table{width:100%;border-collapse:collapse;font-size:11.5px}
+.table th,.table td{padding:11px 9px;text-align:left;border-bottom:1px solid #1b2b3e;white-space:nowrap}
+.table th{color:var(--muted);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px}
+.table td b{font-family:var(--mono)}
+.tableWrap{overflow-x:auto}
+.mobileNav{display:none}
+.hint{font-size:10.5px;color:var(--muted2);margin-top:8px;line-height:1.5}
+.stockoutHero{display:flex;align-items:center;gap:22px;padding:18px}
+.ring-wrap{position:relative;width:112px;height:112px;flex:none}
+.ring-wrap svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:#16283d;stroke-width:9}
+.ring-fg{fill:none;stroke:var(--cyan);stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset .5s ease,stroke .3s}
+.ring-num{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--mono);font-weight:800;font-size:20px}
+
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.dashboard,.three{grid-template-columns:1fr}.side{width:214px}.main{margin-left:214px;width:calc(100% - 214px)}}
+@media(max-width:760px){
+  .side{display:none}
+  .main{margin-left:0;width:100%;padding:16px 12px 78px}
+  .top{align-items:flex-start;gap:10px}
+  .title{font-size:21px}
+  .actions .btn.ghost{display:none}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .kpi .num{font-size:22px}
+  .two,.counterGrid,.resultGrid{grid-template-columns:1fr}
+  .mobileNav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#081522f7;border-top:1px solid var(--line);z-index:30;justify-content:space-around;padding:8px 4px}
+  .mobileNav button{background:none;border:0;color:#91a4b8;font-size:10px;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .mobileNav button.active{color:var(--cyan)}
+  .map{height:260px}
+  .graphWrap{height:280px}
+  .recMeta{gap:10px}
+  .simFooter{align-items:stretch;flex-direction:column}
+  .stockoutHero{flex-direction:column;text-align:center}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="side">
+  <div class="brand"><div class="logo"><img src="SupplyPulse_logo.png" alt="Logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit"></div><div><b>SupplyPulse</b><span>Network intelligence</span></div></div>
+  <div class="nav">
+    <button class="active" data-page="command"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>Command Center</button>
+    <button data-page="network"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 7.5 10.5 16M16 7.5 13.5 16M8.5 6h7"/></svg>Live Network</button>
+    <button data-page="intervention"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h11v4M18 7 14 3M17 17H6v-4M6 17l4 4"/></svg>Intervention Center</button>
+    <button data-page="sim"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M10 19V4M16 19v-7M22 19H2"/></svg>What-If Laboratory</button>
+    <button data-page="inventory"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>Inventory</button>
+  </div>
+  <div class="sideDivider"></div>
+  <div class="sideBottom"><span class="pulse"></span>Network sync healthy<br><br>12 monitored facilities<br>Demo build · v1.0</div>
+</aside>
+
+<main class="main">
+  <div class="top">
+    <div>
+      <div class="eyebrow">Healthcare supply-chain intelligence</div>
+      <div class="title">Command Center</div>
+      <div class="sub">Active scenario: <b id="scenarioName">No disruption applied</b> · <span id="scenarioStateTxt">baseline network state</span></div>
+    </div>
+    <div class="actions">
+      <span class="chip" id="netStatusChip">● NETWORK STABLE</span>
+      <button class="btn ghost" id="resetBtn">Reset network</button>
+      <button class="btn primary" id="quickRun">Run Simulation</button>
+    </div>
+  </div>
+
+  <!-- COMMAND CENTER -->
+  <section id="command" class="page active">
+    <div class="grid kpis">
+      <div class="card kpi"><div class="label">Monitored facilities</div><div class="num">12</div><div class="delta">Medicine X network</div></div>
+      <div class="card kpi"><div class="label">Critical facilities</div><div class="num" id="criticalKpi">–</div><div class="delta" id="criticalDelta">–</div></div>
+      <div class="card kpi"><div class="label">At-risk facilities</div><div class="num" id="riskKpi">–</div><div class="delta">Early-warning queue</div></div>
+      <div class="card kpi"><div class="label">Estimated shortage</div><div class="num" id="shortageKpi">–</div><div class="delta">units before next replenishment</div></div>
+      <div class="card kpi"><div class="label">Transfer opportunities</div><div class="num" id="transferKpi">–</div><div class="delta">feasible matches now</div></div>
+    </div>
+
+    <div class="grid dashboard">
+      <div class="card">
+        <div class="cardHead"><h3>Network risk map</h3><span class="tag" id="networkRisk">NETWORK RISK</span></div>
+        <div class="map" id="mapCanvas">
+          <div class="road" style="width:46%;left:10%;top:48%;transform:rotate(-18deg)"></div>
+          <div class="road" style="width:52%;left:32%;top:64%;transform:rotate(22deg)"></div>
+          <div class="road" style="width:39%;left:45%;top:34%;transform:rotate(51deg)"></div>
+          <div class="road" style="width:30%;left:14%;top:26%;transform:rotate(34deg)"></div>
+          <div class="legend">
+            <div class="leg"><span class="dot" style="background:var(--red)"></span>Critical</div>
+            <div class="leg"><span class="dot" style="background:var(--orange)"></span>At risk</div>
+            <div class="leg"><span class="dot" style="background:var(--amber)"></span>Watch</div>
+            <div class="leg"><span class="dot" style="background:var(--green)"></span>Stable</div>
+          </div>
+        </div>
+      </div>
+      <div class="card sidePanel">
+        <div class="cardHead"><h3>Selected facility</h3><span class="tag" id="selectedTag">F-104</span></div>
+        <div class="facility">
+          <div class="facilityTitle"><div><b id="selectedName">F-104 · Central Hospital</b><div class="sub">Medicine X · Priority supply</div></div><span class="riskPill status critical" id="selectedRisk">STABLE</span></div>
+          <div class="metrics">
+            <div class="metric"><small>Stock on hand</small><b id="selStock">–</b></div>
+            <div class="metric"><small>Days of cover</small><b id="selDays">–</b></div>
+            <div class="metric"><small>Replenishment ETA</small><b id="selRepl">–</b></div>
+            <div class="metric"><small>Data trust</small><b id="selTrust">–</b></div>
+          </div>
+          <small class="sub">Stock coverage vs. replenishment window</small>
+          <div class="bar"><i id="stockBar" style="width:0%"></i></div>
+          <div style="margin-top:14px"><button class="btn primary" style="width:100%" onclick="go('intervention')">Open intervention →</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid three" style="margin-top:14px">
+      <div class="card">
+        <div class="cardHead"><h3>Dynamic affected facilities</h3><span class="tag" id="affectedTag">– critical · – watch</span></div>
+        <div class="bodyPad"><div class="riskList" id="riskList"></div></div>
+      </div>
+      <div class="card">
+        <div class="cardHead"><h3>Stockout clock</h3><span class="tag" id="clockMedicine">Medicine X</span></div>
+        <div class="stockoutHero">
+          <div class="ring-wrap">
+            <svg width="112" height="112" viewBox="0 0 112 112">
+              <circle class="ring-bg" cx="56" cy="56" r="47"/>
+              <circle class="ring-fg" id="clockRing" cx="56" cy="56" r="47" stroke-dasharray="295" stroke-dashoffset="295"/>
+            </svg>
+            <div class="ring-num" id="clockRingNum">–</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#a8b9c9">Next projected stockout</div>
+            <div style="font-size:15px;font-weight:700;margin-top:4px" id="clockFacility">–</div>
+            <div class="sub" style="margin-top:6px">Supply gap under current scenario: <b id="gap">–</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="cardHead"><h3>Network risk score</h3><span class="tag" id="riskLevel">–</span></div>
+        <div class="bodyPad">
+          <div style="font-size:28px;font-weight:800;font-family:var(--mono)" id="riskScore">–</div>
+          <div class="sub">Dependency exposure + demand pressure + lead-time risk</div>
+          <div class="bar" style="margin-top:15px"><i id="riskBar" style="width:0%"></i></div>
+          <div style="margin-top:13px;font-size:10.5px;color:#a9b8c8">Top dependency: <b id="topDependency">–</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIVE NETWORK -->
+  <section id="network" class="page">
+    <div class="card">
+      <div class="cardHead">
+        <h3 id="networkHeadTitle">Live network dependency graph</h3>
+        <div class="tabbar">
+          <button class="active" id="tabGraph" onclick="setNetworkView('graph')">Dependency graph</button>
+          <button id="tabMap" onclick="setNetworkView('map')">Geographic map</button>
+        </div>
+      </div>
+      <div class="dependency">
+        <div class="supplierTabs tabbar" id="supplierTabs" style="margin-bottom:10px"></div>
+        <div class="depSummary" id="depSummary">–</div>
+        <div id="graphView" class="graphWrap"><svg class="graph" id="graph" viewBox="0 0 900 340" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div id="mapView" style="display:none">
+          <div class="map" id="mapCanvas2">
+            <div class="legend">
+              <div class="leg"><span class="dot" style="background:var(--red)"></span>Critical</div>
+              <div class="leg"><span class="dot" style="background:var(--orange)"></span>At risk</div>
+              <div class="leg"><span class="dot" style="background:var(--amber)"></span>Watch</div>
+              <div class="leg"><span class="dot" style="background:var(--green)"></span>Stable</div>
+            </div>
+          </div>
+        </div>
+        <div class="hint">Click a supplier to trace which facilities share that dependency. Click any node to inspect it — the same facility is selected everywhere in the app.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTERVENTION CENTER -->
+  <section id="intervention" class="page">
+    <div class="grid two">
+      <div class="card">
+        <div class="cardHead"><h3>Intervention Center</h3><span class="tag" id="recCount">– ranked</span></div>
+        <div class="intervention" id="recWrap"></div>
+      </div>
+      <div class="card">
+        <div class="cardHead"><h3>Counterfactual impact</h3><span class="tag">Same scenario · one intervention</span></div>
+        <div class="counter">
+          <div class="counterGrid">
+            <div class="cf"><div class="head">Without intervention</div><strong id="beforeDays">–</strong><p id="beforeLabel">–</p><p style="margin-top:6px;color:#ff9ba7" id="beforeShort">–</p></div>
+            <div class="cf after"><div class="head">With recommended move</div><strong class="deltaGood" id="afterDays">–</strong><p id="afterLabel">–</p><p class="deltaGood" style="margin-top:6px" id="afterShort">–</p></div>
+          </div>
+          <div style="margin-top:14px;padding:11px;border:1px solid #1a3145;border-radius:9px;background:#091727;font-size:10.5px;color:#a9bac9">Counterfactual is calculated from the same inventory, consumption, replenishment and transport assumptions used elsewhere in the app. Approving executes the transfer against real facility stock — nothing moves automatically without sign-off.</div>
+          <div class="sectionTitle" style="margin-top:16px">Approved transfer log</div>
+          <div class="log" id="transferLog"><div class="empty">No transfers approved yet.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="cardHead"><h3>Transfer opportunities</h3><span class="tag" id="opportunityCount">– feasible matches</span></div>
+      <div class="bodyPad tableWrap"><table class="table"><thead><tr><th>Source</th><th>Destination</th><th>Surplus</th><th>Need</th><th>Distance</th><th>ETA</th><th>Feasibility</th></tr></thead><tbody id="transferTable"></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- WHAT-IF LAB -->
+  <section id="sim" class="page">
+    <div class="grid two">
+      <div class="card">
+        <div class="cardHead"><h3>What-If Laboratory</h3><span class="tag" id="simStatus">READY</span></div>
+        <div class="simControls">
+          <div class="scenarioBadge"><span>Disrupted supplier</span><div class="tabbar" id="supplierPicker"></div></div>
+          <div class="control"><div class="controlTop"><span>Supplier delay<small>Added lead time for facilities on the disrupted supplier</small></span><span class="value" id="delayVal">+0 days</span></div><input class="range" id="delay" type="range" min="0" max="10" value="5"></div>
+          <div class="control"><div class="controlTop"><span>Demand increase<small>Network-wide consumption surge</small></span><span class="value" id="demandVal">+0%</span></div><input class="range" id="demand" type="range" min="0" max="60" value="30"></div>
+          <div class="control"><div class="controlTop"><span>Transport delay<small>Added hours on every redistribution route</small></span><span class="value" id="transportVal">+0 hours</span></div><input class="range" id="transport" type="range" min="0" max="12" value="4"></div>
+          <div class="control"><div class="controlTop"><span>Inventory loss<small>One-off spoilage on the disrupted supplier's facilities when run</small></span><span class="value" id="lossVal">0%</span></div><input class="range" id="loss" type="range" min="0" max="40" value="20"></div>
+          <div class="simFooter">
+            <div class="scenario" id="simFooterHint">Drag the sliders, then run to apply the disruption to the real network state.</div>
+            <button class="btn primary" id="runBtn">RUN SIMULATION</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="cardHead"><h3>Projected outcome (preview)</h3><span class="tag">Before you commit</span></div>
+        <div class="bodyPad">
+          <div class="grid resultGrid">
+            <div class="card result"><small>Critical facilities</small><b id="simCritical">–</b><div class="change" id="simCriticalChange">–</div></div>
+            <div class="card result"><small>Estimated shortage</small><b id="simShortage">–</b><div class="change" id="simShortageChange">–</div></div>
+            <div class="card result"><small>Feasible transfers</small><b id="simTransfers">–</b><div class="change" id="simTransferChange">–</div></div>
+          </div>
+          <div style="margin-top:16px">
+            <div class="sectionTitle">Propagation result — facilities that would change status</div>
+            <div class="riskList" id="simAffected"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INVENTORY -->
+  <section id="inventory" class="page">
+    <div class="card">
+      <div class="cardHead"><h3>Inventory &amp; surplus discovery</h3><span class="tag">Medicine X · FEFO-aware</span></div>
+      <div class="bodyPad tableWrap"><table class="table"><thead><tr><th>Facility</th><th>Supplier</th><th>On hand</th><th>Daily use</th><th>Days of cover</th><th>Replenishment</th><th>Transferable</th><th>Expiry</th><th>Trust</th><th>Status</th></tr></thead><tbody id="inventoryTable"></tbody></table></div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<div class="mobileNav">
+  <button class="active" data-page="command"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>Home</button>
+  <button data-page="network"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/></svg>Network</button>
+  <button data-page="intervention"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h11v4M17 17H6v-4"/></svg>Act</button>
+  <button data-page="sim"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M10 19V4M16 19v-7M22 19H2"/></svg>Sim</button>
+  <button data-page="inventory"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/></svg>Stock</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================= DATA ============================= */
+const FACILITIES = [
+ {id:'F-104',name:'Central Hospital',supplier:'A',x:72,y:48,baseStock:620,baseDaily:82,baseRepl:3.4,expiry:31,trust:86},
+ {id:'F-087',name:'North District',   supplier:'A',x:43,y:23,baseStock:1250,baseDaily:52,baseRepl:2.5,expiry:54,trust:94},
+ {id:'F-031',name:'East General',     supplier:'A',x:82,y:25,baseStock:640,baseDaily:54,baseRepl:3.0,expiry:39,trust:91},
+ {id:'F-052',name:'South Medical',    supplier:'A',x:49,y:76,baseStock:300,baseDaily:80,baseRepl:2.0,expiry:28,trust:81},
+ {id:'F-078',name:'Riverside Annex',  supplier:'A',x:63,y:65,baseStock:520,baseDaily:46,baseRepl:2.6,expiry:45,trust:88},
+ {id:'F-116',name:'West Community',   supplier:'B',x:20,y:55,baseStock:1050,baseDaily:45,baseRepl:5.0,expiry:62,trust:96},
+ {id:'F-009',name:'Metro Clinic',     supplier:'B',x:25,y:29,baseStock:480,baseDaily:48,baseRepl:4.4,expiry:47,trust:89},
+ {id:'F-062',name:'Harbor Clinic',    supplier:'B',x:12,y:40,baseStock:260,baseDaily:50,baseRepl:3.6,expiry:22,trust:78},
+ {id:'F-093',name:'Northgate',        supplier:'B',x:30,y:12,baseStock:700,baseDaily:40,baseRepl:5.5,expiry:58,trust:92},
+ {id:'F-071',name:'Lakeside',         supplier:'C',x:61,y:18,baseStock:780,baseDaily:39,baseRepl:6.2,expiry:72,trust:97},
+ {id:'F-120',name:'Rural Hub',        supplier:'C',x:88,y:68,baseStock:190,baseDaily:58,baseRepl:7.9,expiry:21,trust:73},
+ {id:'F-045',name:'Highland Post',    supplier:'C',x:77,y:85,baseStock:340,baseDaily:34,baseRepl:6.8,expiry:35,trust:85},
+];
+const SUPPLIERS = {
+ A:{name:'Supplier A',x:10,y:50},
+ B:{name:'Supplier B',x:10,y:15},
+ C:{name:'Supplier C',x:10,y:85},
+};
+Object.keys(SUPPLIERS).forEach(k=>SUPPLIERS[k].fac=FACILITIES.filter(f=>f.supplier===k).map(f=>f.id));
+
+// Mutable ledger — this is the ACTUAL network state. Everything the app renders reads from this.
+let ledger = {};
+function resetLedger(){ ledger = {}; FACILITIES.forEach(f=>{ ledger[f.id] = { stock: f.baseStock, lossApplied: 0 }; }); }
+resetLedger();
+
+let committed = { supplier:'A', delay:0, demand:0, transport:0, loss:0 }; // what's actually real right now
+let draft     = { supplier:'A', delay:5, demand:30, transport:4, loss:20 }; // what the sliders currently propose
+
+let approvedTransfers = [];
+let rejectedPairs = new Set();
+let selectedFacility = 'F-104';
+let selectedSupplier = 'A';
+let networkView = 'graph';
+let currentPage = 'command';
+
+/* ============================= MODEL ============================= */
+function statusFor(days, repl){
+  if(days < repl*0.9) return 'critical';
+  if(days < repl*1.25) return 'at';
+  if(days < repl*1.8) return 'watch';
+  return 'stable';
+}
+function statusLabel(s){ return {critical:'CRITICAL',at:'AT RISK',watch:'WATCH',stable:'STABLE'}[s]; }
+
+// Computes a facility's metrics under a given scenario. If commit=true, mutates the ledger (real spoilage + records applied loss).
+function computeFacility(f, scenario, commit){
+  const rec = ledger[f.id];
+  const daily = f.baseDaily * (1 + scenario.demand/100);
+  const repl  = f.baseRepl + (f.supplier === scenario.supplier ? scenario.delay : 0);
+  const affected = f.supplier === scenario.supplier;
+  const lossDelta = affected ? Math.max(0, scenario.loss - rec.lossApplied) : 0;
+  const stock = rec.stock * (1 - lossDelta/100);
+  if(commit){
+    rec.stock = stock;
+    if(affected) rec.lossApplied = Math.max(rec.lossApplied, scenario.loss);
+  }
+  const days = stock / daily;
+  const status = statusFor(days, repl);
+  const transferable = Math.max(0, Math.round(stock - daily*5 - Math.max(80, daily*2)));
+  const need = Math.max(0, Math.round(daily * Math.max(0, (repl - days) + 1)));
+  return { id:f.id, name:f.name, supplier:f.supplier, x:f.x, y:f.y, expiry:f.expiry, trust:f.trust,
+           stock, daily, repl, days, status, transferable, need, gap: repl - days };
+}
+function computeAll(scenario, commit){
+  return FACILITIES.map(f=>computeFacility(f, scenario, commit));
+}
+function dist(a,b){ return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2); }
+function eta(km, scenario){ return km/45 + scenario.transport; }
+
+function aggregate(rows, scenario){
+  const critical = rows.filter(r=>r.status==='critical').length;
+  const at = rows.filter(r=>r.status==='at').length;
+  const watch = rows.filter(r=>r.status==='watch').length;
+  const stable = rows.filter(r=>r.status==='stable').length;
+  const shortage = Math.round(rows.reduce((s,r)=> s + (r.status==='critical'||r.status==='at' ? r.need : 0), 0));
+  const pairs = buildRecommendations(rows, scenario, new Set());
+  const transfers = pairs.length;
+  const pressure = scenario.delay*3 + scenario.demand*0.8 + scenario.transport*1.2 + scenario.loss*1.4;
+  const risk = Math.max(8, Math.min(97, Math.round(critical*9 + at*4.5 + watch*1.8 + pressure*0.35)));
+  return {critical, at, watch, stable, shortage, transfers, risk, pairs};
+}
+
+function buildRecommendations(rows, scenario, excludePairs){
+  const byId = {}; rows.forEach(r=>byId[r.id]=r);
+  const needy = rows.filter(r=> (r.status==='critical'||r.status==='at') && r.need>0)
+                     .sort((a,b)=> a.days - b.days);
+  const recs = [];
+  needy.forEach(dest=>{
+    let best=null, bestScore=-Infinity;
+    rows.forEach(src=>{
+      if(src.id===dest.id || src.transferable<=0) return;
+      if(excludePairs.has(src.id+'>'+dest.id)) return;
+      const km = dist(src, dest);
+      const h = eta(km, scenario);
+      const qty = Math.min(src.transferable, dest.need);
+      if(qty<=0) return;
+      const score = qty - h*14 - km*0.3;
+      if(score>bestScore){ bestScore=score; best={src, km, h, qty}; }
+    });
+    if(best){
+      const feas = Math.max(15, Math.min(97, Math.round(100 - best.h*4.2 - (dest.days<1.5?15:0))));
+      recs.push({ source:best.src.id, sourceName:best.src.name, dest:dest.id, destName:dest.name,
+                  qty:Math.round(best.qty), distance:best.km, etaH:best.h, feasibility:feas,
+                  destDays:dest.days, destRepl:dest.repl, destStatus:dest.status, destDaily:dest.daily });
+    }
+  });
+  return recs;
+}
+
+/* ============================= HELPERS ============================= */
+const STATUS_ORDER = {critical:0,at:1,watch:2,stable:3};
+function byStatus(a,b){ return STATUS_ORDER[a.status]-STATUS_ORDER[b.status]; }
+const $ = id => document.getElementById(id);
+const fmt = n => Math.round(n).toLocaleString();
+function setText(id,val){ const el=$(id); if(el) el.textContent = val; }
+function bump(id){ const el=$(id); if(!el) return; el.classList.remove('bump'); requestAnimationFrame(()=>el.classList.add('bump')); }
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),3200); }
+function fac(id){ return FACILITIES.find(f=>f.id===id); }
+
+/* ============================= RENDER: shared state ============================= */
+function actualRows(){ return computeAll(committed, false); }
+
+function renderScenarioHeader(){
+  const disrupted = committed.delay>0 || committed.demand>0 || committed.transport>0 || committed.loss>0;
+  setText('scenarioName', disrupted
+    ? `${SUPPLIERS[committed.supplier].name} delay +${committed.delay}d · demand +${committed.demand}%`
+    : 'No disruption applied');
+  setText('scenarioStateTxt', disrupted ? 'scenario is live across the network' : 'baseline network state');
+  const a = aggregate(actualRows(), committed);
+  const chip = $('netStatusChip');
+  const label = a.critical>0 ? 'NETWORK CRITICAL' : a.at>2 ? 'NETWORK AT RISK' : a.watch>2 ? 'NETWORK WATCH' : 'NETWORK STABLE';
+  chip.textContent = '● ' + label;
+  chip.className = 'chip ' + (a.critical>0?'hot':(a.at>2?'warn':''));
+}
+
+function renderKPIs(){
+  const rows = actualRows();
+  const a = aggregate(rows, committed);
+  setText('criticalKpi', a.critical); bump('criticalKpi');
+  setText('criticalDelta', a.critical>0 ? `${a.critical} of 12 facilities` : 'None currently critical');
+  setText('riskKpi', a.at); bump('riskKpi');
+  setText('shortageKpi', fmt(a.shortage)); bump('shortageKpi');
+  setText('transferKpi', a.transfers); bump('transferKpi');
+  setText('riskScore', a.risk+'/100');
+  $('riskBar').style.width = a.risk+'%';
+  const lvl = a.risk>75?'CRITICAL':a.risk>55?'ELEVATED':a.risk>30?'WATCH':'STABLE';
+  setText('riskLevel', lvl);
+  setText('networkRisk', 'NETWORK RISK · '+lvl);
+  setText('affectedTag', `${a.critical} critical · ${a.watch+a.at} watch/at`);
+  const topSupplier = Object.keys(SUPPLIERS).reduce((best,k)=>{
+    const count = rows.filter(r=>r.supplier===k && (r.status==='critical'||r.status==='at')).length;
+    return count > (best.count||0) ? {k,count} : best;
+  }, {});
+  setText('topDependency', topSupplier.k ? `${SUPPLIERS[topSupplier.k].name} → ${SUPPLIERS[topSupplier.k].fac.length} facilities` : '—');
+  renderScenarioHeader();
+}
+
+function renderMapInto(canvasId, rows){
+  const map = $(canvasId);
+  map.querySelectorAll('.node').forEach(n=>n.remove());
+  rows.forEach(r=>{
+    const d = document.createElement('div');
+    d.className = 'node ' + r.status + (selectedFacility===r.id?' selected':'');
+    d.style.left = r.x+'%'; d.style.top = r.y+'%';
+    const c = r.status==='critical'?'var(--red)':r.status==='at'?'var(--orange)':r.status==='watch'?'var(--amber)':'var(--green)';
+    d.style.setProperty('--c', c);
+    d.innerHTML = `<div class="ring"></div><button aria-label="${r.id}"><div class="bubble"></div></button><div class="name">${r.id}</div>`;
+    d.querySelector('button').onclick = ()=>selectFacility(r.id);
+    map.appendChild(d);
+  });
+}
+function renderMap(){ renderMapInto('mapCanvas', actualRows()); if(networkView==='map') renderMapInto('mapCanvas2', actualRows()); }
+
+function selectFacility(id){
+  selectedFacility = id;
+  const f = fac(id);
+  const r = computeFacility(f, committed, false);
+  setText('selectedTag', r.id);
+  setText('selectedName', `${r.id} · ${r.name}`);
+  setText('selStock', fmt(r.stock)+' units');
+  setText('selDays', r.days.toFixed(1)+' days');
+  setText('selRepl', r.repl.toFixed(1)+' days');
+  setText('selTrust', f.trust+'% · '+(f.trust>90?'High':f.trust>80?'Medium-high':'Medium'));
+  $('stockBar').style.width = Math.min(100, r.days / (r.repl*2) * 100)+'%';
+  const pill = $('selectedRisk');
+  pill.textContent = statusLabel(r.status);
+  pill.className = 'riskPill status '+r.status;
+  renderMap();
+  renderGraph();
+}
+
+function renderRiskList(){
+  const rows = actualRows().slice().sort((a,b)=> byStatus(a,b) || a.days-b.days);
+  $('riskList').innerHTML = rows.map(r=>`<div class="riskRow" onclick="selectFacility('${r.id}')"><div class="id">${r.id}</div><div>${r.name}<small>${r.days.toFixed(1)}d cover · ${SUPPLIERS[r.supplier].name}</small></div><span class="status ${r.status}">${statusLabel(r.status)}</span></div>`).join('');
+}
+
+function renderStockoutClock(){
+  const rows = actualRows();
+  const worst = rows.slice().sort((a,b)=>a.days-b.days)[0];
+  setText('clockFacility', `${worst.id} · replenishment ETA exceeds coverage by ${Math.max(0,worst.gap).toFixed(1)}d`);
+  setText('gap', Math.max(0,worst.gap).toFixed(1)+' days');
+  const circumference = 295;
+  const pct = Math.max(0, Math.min(1, worst.days/12));
+  $('clockRing').style.strokeDashoffset = circumference*(1-pct);
+  $('clockRing').style.stroke = worst.status==='critical'?'var(--red)':worst.status==='at'?'var(--orange)':worst.status==='watch'?'var(--amber)':'var(--cyan)';
+  $('clockRingNum').textContent = worst.days.toFixed(1)+'d';
+}
+
+function renderSupplierTabs(){
+  $('supplierTabs').innerHTML = Object.entries(SUPPLIERS).map(([k,v])=>
+    `<button class="${selectedSupplier===k?'active':''}" onclick="selectedSupplier='${k}';renderGraph();renderSupplierTabs()">${v.name} · ${v.fac.length} facilities</button>`
+  ).join('');
+  const disruptedNote = committed.supplier===selectedSupplier && (committed.delay>0||committed.loss>0)
+    ? ` This supplier is currently disrupted in the live scenario (+${committed.delay}d lead time, ${committed.loss}% loss applied).`
+    : '';
+  setText('depSummary', `${SUPPLIERS[selectedSupplier].name} is selected — ${SUPPLIERS[selectedSupplier].fac.length} dependent facilities are highlighted below.${disruptedNote}`);
+}
+
+function renderGraph(){
+  const svg = $('graph');
+  const rows = actualRows(); const byId={}; rows.forEach(r=>byId[r.id]=r);
+  const sup = SUPPLIERS[selectedSupplier];
+  let s = '<defs><filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+  const X = v => 60 + v*7.8, Y = v => v*3.2 + 18;
+  FACILITIES.forEach(f=>{
+    if(sup.fac.includes(f.id)){
+      const hot = byId[f.id].status==='critical';
+      s += `<line class="edge ${hot?'hot':''}" x1="${X(sup.x)}" y1="${Y(sup.y)}" x2="${X(f.x)}" y2="${Y(f.y)}"/>`;
+    }
+  });
+  s += `<g class="gNode selected" onclick="selectedSupplier='${Object.keys(SUPPLIERS).find(k=>SUPPLIERS[k]===sup)}';renderGraph();renderSupplierTabs()">
+        <circle cx="${X(sup.x)}" cy="${Y(sup.y)}" r="19" fill="#31d6c2" filter="url(#glow)"/>
+        <text x="${X(sup.x)-30}" y="${Y(sup.y)+36}">${sup.name}</text></g>`;
+  FACILITIES.forEach(f=>{
+    const r = byId[f.id];
+    const connected = sup.fac.includes(f.id);
+    const col = r.status==='critical'?'#ff5d70':r.status==='at'?'#ff8a4c':r.status==='watch'?'#ffbf58':'#48d597';
+    s += `<g class="gNode ${connected?'':'dim'} ${selectedFacility===f.id?'selected':''}" onclick="selectFacility('${f.id}')">
+          <circle cx="${X(f.x)}" cy="${Y(f.y)}" r="12" fill="${col}"/>
+          <text x="${X(f.x)+15}" y="${Y(f.y)+4}">${f.id}</text></g>`;
+  });
+  svg.innerHTML = s;
+}
+
+function setNetworkView(v){
+  networkView = v;
+  $('tabGraph').classList.toggle('active', v==='graph');
+  $('tabMap').classList.toggle('active', v==='map');
+  $('graphView').style.display = v==='graph' ? '' : 'none';
+  $('mapView').style.display = v==='map' ? '' : 'none';
+  setText('networkHeadTitle', v==='graph' ? 'Live network dependency graph' : 'Geographic network map');
+  if(v==='map') renderMapInto('mapCanvas2', actualRows());
+}
+
+function renderTransfers(){
+  const rows = actualRows();
+  const a = aggregate(rows, committed);
+  const recs = buildRecommendations(rows, committed, rejectedPairs).slice(0,8);
+  $('transferTable').innerHTML = recs.length ? recs.map(r=>{
+    const src = rows.find(x=>x.id===r.source);
+    const feasClass = r.feasibility>75?'stable':r.feasibility>50?'watch':'at';
+    return `<tr>
+      <td><b>${r.source}</b> <small style="color:var(--muted)">${r.sourceName}</small></td>
+      <td><b>${r.dest}</b> <small style="color:var(--muted)">${r.destName}</small></td>
+      <td>${fmt(src.transferable)}</td>
+      <td>${fmt(r.qty)}</td>
+      <td>${r.distance.toFixed(0)} km</td>
+      <td>${r.etaH.toFixed(1)} h</td>
+      <td><span class="status ${feasClass}">${r.feasibility}%</span></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:18px">No feasible transfers required — network is within safe coverage.</td></tr>`;
+  setText('opportunityCount', `${recs.length} feasible match${recs.length===1?'':'es'}`);
+  renderIntervention(recs);
+}
+
+function renderIntervention(recs){
+  setText('recCount', `${recs.length} ranked`);
+  const wrap = $('recWrap');
+  if(!recs.length){
+    wrap.innerHTML = `<div class="empty">No active shortages requiring intervention. Adjust the scenario in the What-If Laboratory to stress-test the network.</div>`;
+    setText('beforeDays','—'); setText('beforeLabel',''); setText('beforeShort','No shortage detected');
+    setText('afterDays','—'); setText('afterLabel',''); setText('afterShort','—');
+    return;
+  }
+  const top = recs[0];
+  const rows = actualRows();
+  const destRow = rows.find(r=>r.id===top.dest);
+  const afterStock = destRow.stock + top.qty;
+  const afterDays = afterStock / destRow.daily;
+  const afterStatus = statusFor(afterDays, destRow.repl);
+
+  wrap.innerHTML = `
+  <div class="recommend">
+    <div class="recTop">
+      <div><div class="eyebrow">Recommended action</div><div class="recTitle">${statusLabel(top.destStatus)} shortage · ${top.destName}</div></div>
+      <span class="status ${top.destStatus}">${top.destStatus==='critical'?'HIGH PRIORITY':'MONITOR'}</span>
+    </div>
+    <div class="route"><span>${top.source}</span> → <span>${top.dest}</span></div>
+    <div class="recMeta">
+      <span>Transfer <b id="recQtyDisplay">${fmt(top.qty)}</b> units</span>
+      <span>ETA <b>${top.etaH.toFixed(1)} h</b></span>
+      <span>Distance <b>${top.distance.toFixed(0)} km</b></span>
+      <span>Feasibility <b>${top.feasibility}%</b></span>
+    </div>
+    <div class="recButtons">
+      <button class="btn approve" id="approveBtn">Approve</button>
+      <button class="btn" id="modifyBtn">Modify</button>
+      <button class="btn reject" id="rejectBtn">Reject</button>
+    </div>
+    <div class="qtyEdit" id="qtyEditRow" style="display:none">
+      <span style="font-size:11px;color:var(--muted)">Transfer quantity</span>
+      <input type="number" id="qtyInput" min="1" value="${Math.round(top.qty)}">
+      <button class="btn small primary" id="confirmQtyBtn">Approve this amount</button>
+    </div>
+  </div>
+  <div class="sectionTitle">Explainability trail</div>
+  <div class="trail">
+    ${[
+      `${top.dest} has ${destRow.days.toFixed(1)} days of projected cover against a ${destRow.repl.toFixed(1)}-day replenishment window.`,
+      `${SUPPLIERS[destRow.supplier].name} dependency exposes ${SUPPLIERS[destRow.supplier].fac.length} connected facilities to the same conditions.`,
+      `${top.source} has ${fmt(fac(top.source)?rows.find(r=>r.id===top.source).transferable:0)} potentially transferable units above its own safety stock.`,
+      `The source is ${top.distance.toFixed(0)} km away, with an estimated transport time of ${top.etaH.toFixed(1)} hours under the current scenario.`,
+      `A ${fmt(top.qty)}-unit transfer would raise ${top.dest} coverage to about ${afterDays.toFixed(1)} days, moving it from ${statusLabel(top.destStatus)} to ${statusLabel(afterStatus)}.`
+    ].map((x,i)=>`<div class="trailRow"><div class="trailIcon">${i+1}</div><div>${x}</div></div>`).join('')}
+  </div>`;
+
+  setText('beforeDays', destRow.days.toFixed(1)+' days');
+  setText('beforeLabel', `${top.dest} projected stockout window`);
+  setText('beforeShort', fmt(aggregate(rows,committed).shortage)+' units network shortage');
+  setText('afterDays', afterDays.toFixed(1)+' days');
+  afterDays >= destRow.days ? $('afterDays').classList.add('deltaGood') : $('afterDays').classList.remove('deltaGood');
+  setText('afterLabel', `Projected coverage after transfer`);
+  const rowsAfterSim = rows.map(r=> r.id===top.dest ? {...r, stock:afterStock, days:afterDays, status:afterStatus, need:Math.max(0,r.need-top.qty)} : r);
+  const shortAfter = Math.round(rowsAfterSim.reduce((s,r)=>s+(r.status==='critical'||r.status==='at'?r.need:0),0));
+  setText('afterShort', fmt(Math.max(0,aggregate(rows,committed).shortage - shortAfter))+' units shortage avoided');
+
+  $('approveBtn').onclick = ()=> approveTransfer(top.source, top.dest, top.qty);
+  $('rejectBtn').onclick = ()=>{ rejectedPairs.add(top.source+'>'+top.dest); toast(`Recommendation rejected — no inventory moved between ${top.source} and ${top.dest}.`); renderAll(); };
+  $('modifyBtn').onclick = ()=>{ $('qtyEditRow').style.display = $('qtyEditRow').style.display==='none' ? 'flex' : 'none'; };
+  $('confirmQtyBtn').onclick = ()=>{
+    const q = Math.max(1, Math.min(rows.find(r=>r.id===top.source).transferable, +$('qtyInput').value || top.qty));
+    approveTransfer(top.source, top.dest, q);
+  };
+}
+
+function approveTransfer(sourceId, destId, qty){
+  qty = Math.round(qty);
+  ledger[sourceId].stock -= qty;
+  ledger[destId].stock += qty;
+  approvedTransfers.unshift({source:sourceId, dest:destId, qty, at:new Date()});
+  rejectedPairs.delete(sourceId+'>'+destId);
+  toast(`Approved: ${fmt(qty)} units moved from ${sourceId} to ${destId}. Network recalculated.`);
+  renderAll();
+}
+
+function renderTransferLog(){
+  const el = $('transferLog');
+  if(!approvedTransfers.length){ el.innerHTML = `<div class="empty">No transfers approved yet.</div>`; return; }
+  el.innerHTML = approvedTransfers.slice(0,8).map(t=>
+    `<div class="logRow"><span><b>${t.source}</b> → <b>${t.dest}</b></span><span>${fmt(t.qty)} units</span></div>`
+  ).join('');
+}
+
+function renderInventory(){
+  const rows = actualRows();
+  $('inventoryTable').innerHTML = rows.map(r=>`<tr>
+    <td><b>${r.id}</b> ${r.name}</td>
+    <td>${SUPPLIERS[r.supplier].name}</td>
+    <td>${fmt(r.stock)}</td>
+    <td>${r.daily.toFixed(1)}</td>
+    <td>${r.days.toFixed(1)}d</td>
+    <td>${r.repl.toFixed(1)}d</td>
+    <td><b>${fmt(r.transferable)}</b></td>
+    <td>${r.expiry}d</td>
+    <td>${r.trust}%</td>
+    <td><span class="status ${r.status}">${statusLabel(r.status)}</span></td>
+  </tr>`).join('');
+}
+
+/* ============================= WHAT-IF LAB (preview, non-committing) ============================= */
+function renderSupplierPicker(){
+  $('supplierPicker').innerHTML = Object.entries(SUPPLIERS).map(([k,v])=>
+    `<button class="${draft.supplier===k?'active':''}" onclick="draft.supplier='${k}';renderSim();markChanged()">${v.name}</button>`
+  ).join('');
+}
+
+function renderSim(){
+  setText('delayVal', '+'+draft.delay+' days');
+  setText('demandVal', '+'+draft.demand+'%');
+  setText('transportVal', '+'+draft.transport+' hours');
+  setText('lossVal', draft.loss+'%');
+  $('delay').value = draft.delay; $('demand').value = draft.demand; $('transport').value = draft.transport; $('loss').value = draft.loss;
+  renderSupplierPicker();
+
+  const rowsNow = actualRows();
+  const aNow = aggregate(rowsNow, committed);
+  const rowsPreview = computeAll(draft, false);
+  const aPrev = aggregate(rowsPreview, draft);
+
+  setText('simCritical', aPrev.critical);
+  setText('simShortage', fmt(aPrev.shortage));
+  setText('simTransfers', aPrev.transfers);
+  const dC = aPrev.critical - aNow.critical, dS = aPrev.shortage - aNow.shortage;
+  setText('simCriticalChange', `${dC>0?'+':''}${dC} vs current network (${aNow.critical})`);
+  $('simCriticalChange').className = 'change ' + (dC>0?'up':dC<0?'down':'');
+  setText('simShortageChange', `${dS>0?'+':''}${fmt(dS)} units vs current (${fmt(aNow.shortage)})`);
+  $('simShortageChange').className = 'change ' + (dS>0?'up':dS<0?'down':'');
+  setText('simTransferChange', `${aPrev.transfers} matches would be feasible`);
+
+  const changedRows = rowsPreview.filter(rp=>{
+    const cur = rowsNow.find(r=>r.id===rp.id);
+    return cur.status !== rp.status;
+  }).sort(byStatus);
+  $('simAffected').innerHTML = changedRows.length ? changedRows.map(r=>{
+    const cur = rowsNow.find(x=>x.id===r.id);
+    return `<div class="riskRow"><div class="id">${r.id}</div><div>${r.name}<small>${statusLabel(cur.status)} → ${statusLabel(r.status)}</small></div><span class="status ${r.status}">${statusLabel(r.status)}</span></div>`;
+  }).join('') : `<div class="empty">No status changes projected — try increasing the sliders.</div>`;
+
+  const isChanged = JSON.stringify(draft) !== JSON.stringify(committed);
+  setText('simStatus', isChanged ? 'PREVIEW — NOT APPLIED' : 'APPLIED');
+  $('simFooterHint').textContent = isChanged
+    ? 'This is a live preview. Click Run Simulation to apply these conditions to the real network.'
+    : 'The current sliders match the live network state.';
+  $('runBtn').disabled = !isChanged;
+}
+function markChanged(){ renderSim(); }
+
+/* ============================= PAGE NAV ============================= */
+function go(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  $(page).classList.add('active');
+  document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active', b.dataset.page===page));
+  const titles = {command:'Command Center', network:'Live Network', intervention:'Intervention Center', sim:'What-If Laboratory', inventory:'Inventory'};
+  document.querySelector('.title').textContent = titles[page];
+  currentPage = page;
+  if(page==='network'){ renderGraph(); renderSupplierTabs(); if(networkView==='map') renderMapInto('mapCanvas2', actualRows()); }
+}
+document.querySelectorAll('[data-page]').forEach(b=> b.onclick = ()=>go(b.dataset.page));
+
+/* ============================= RENDER ALL ============================= */
+function renderAll(){
+  renderKPIs();
+  renderMap();
+  selectFacility(selectedFacility);
+  renderRiskList();
+  renderStockoutClock();
+  renderSupplierTabs();
+  renderGraph();
+  renderTransfers();
+  renderTransferLog();
+  renderInventory();
+  renderSim();
+}
+
+/* ============================= EVENTS ============================= */
+['delay','demand','transport','loss'].forEach(id=>{
+  $(id).addEventListener('input', ()=>{ draft[id] = +$(id).value; renderSim(); });
+});
+
+$('runBtn').onclick = ()=>{
+  computeAll(draft, true);          // commits: mutates ledger stock + records loss applied
+  committed = {...draft};
+  toast('Simulation applied — network state recalculated from the live disruption.');
+  renderAll();
+  go('command');
+};
+$('quickRun').onclick = ()=>{ if(!$('runBtn').disabled){ $('runBtn').click(); } else { toast('Adjust the What-If sliders first, then run the simulation.'); go('sim'); } };
+$('resetBtn').onclick = ()=>{
+  resetLedger();
+  committed = { supplier:'A', delay:0, demand:0, transport:0, loss:0 };
+  draft = { supplier:'A', delay:5, demand:30, transport:4, loss:20 };
+  approvedTransfers = []; rejectedPairs = new Set();
+  toast('Network reset to baseline — no disruption, no transfers.');
+  renderAll();
+};
+
+renderAll();
+</script>
+</body>
+</html>
